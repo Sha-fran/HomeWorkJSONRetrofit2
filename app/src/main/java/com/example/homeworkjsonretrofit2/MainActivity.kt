@@ -5,9 +5,8 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.schedulers.Schedulers
 
 
 class MainActivity : Activity() {
@@ -22,24 +21,22 @@ class MainActivity : Activity() {
         requestButton = findViewById(R.id.requestButton)
 
         requestButton.setOnClickListener {
+            textContent.text = ""
+
             val client = ApiClient.retrofit.create(ApiInterface::class.java)
-            client.getCurrentWeather().enqueue(object :Callback<CurrentWeatherResponce> {
-                override fun onResponse(
-                    call: Call<CurrentWeatherResponce>,
-                    response: Response<CurrentWeatherResponce>
-                ) {
-                    if (response.isSuccessful) {
-                        val currentWeather = response.body()?.currentWeather
-                        val message = "-Temperature: ${currentWeather?.temperature} \n- Wind direction: ${currentWeather?.winddirection}\n- Wind speed: ${currentWeather?.windspeed}"
-                        textContent.text = message
-                    }
-                }
 
-                override fun onFailure(call: Call<CurrentWeatherResponce>, t: Throwable) {
-                    Toast.makeText(this@MainActivity, "Error", Toast.LENGTH_LONG)
-                }
+            client.getCurrentWeatherRx()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({result ->
+                    textContent.text = "-Temperature: ${result.currentWeather?.temperature} \n" +
+                            "- Wind direction: ${result.currentWeather?.winddirection}\n" +
+                            "- Wind speed: ${result.currentWeather?.windspeed}"
+                },
+                {error ->
+                    Toast.makeText(this, "Error", Toast.LENGTH_LONG)
+                })
 
-            })
         }
     }
 }
